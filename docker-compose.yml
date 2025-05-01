@@ -6,5 +6,9 @@ services:
     ports:
       - "8501:8501"
     volumes:
-      - .:/app
+      - .:/app          # Para mapear todo el código y facilitar el desarrollo
+      - db_data:/app/movimientos.db  # <--- Volumen separado para la base de datos
     container_name: gastos_familia_app
+
+volumes:
+  db_data:
