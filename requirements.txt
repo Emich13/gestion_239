@@ -1,0 +1,3 @@
+streamlit
+pandas
+#sqlite3  # (ya viene con Python, no hace falta instalarlo, pero lo dejamos por claridad)
