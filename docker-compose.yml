@@ -3,12 +3,11 @@ version: "3.9"
 services:
   gastos-familia:
     build: .
+    env_file:
+      - .env
     ports:
       - "8501:8501"
     volumes:
-      - .:/app          # Para mapear todo el código y facilitar el desarrollo
-      - db_data:/app/movimientos.db  # <--- Volumen separado para la base de datos
-    container_name: gastos_familia_app
-
-volumes:
-  db_data:
+      - .:/gestion_239               # ✅ Mapeado al mismo WORKDIR definido en el Dockerfile
+      - ./data:/gestion_239/data     # ✅ Carpeta de datos persistente
+    container_name: gestion_239

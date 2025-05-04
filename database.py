@@ -1,85 +1,109 @@
-import sqlite3
+from dotenv import load_dotenv
+load_dotenv()
+import psycopg2
+import os
 import json
 
-DB_NAME = "movimientos.db"
+# Variables de entorno
+DB_NAME = os.getenv("DB_NAME")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT", 5432)  # Default a 5432 si no se proporciona
 
-def init_db():
-    with sqlite3.connect(DB_NAME) as conn:
-        c = conn.cursor()
-        # Crear tabla usuarios
-        c.execute(''' 
-            CREATE TABLE IF NOT EXISTS usuarios (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nombre TEXT NOT NULL
-            )
-        ''')
-        # Crear tabla movimientos
-        c.execute(''' 
-            CREATE TABLE IF NOT EXISTS movimientos (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                tipo TEXT CHECK(tipo IN ('ingreso', 'gasto')) NOT NULL,
-                descripcion TEXT,
-                monto REAL NOT NULL,
-                fecha DATE NOT NULL,
-                id_usuario INTEGER NOT NULL,
-                participantes TEXT,
-                FOREIGN KEY (id_usuario) REFERENCES usuarios(id)
-            )
-        ''')
-        conn.commit()
-
-def agregar_usuario(nombre):
-    with sqlite3.connect(DB_NAME) as conn:
-        c = conn.cursor()
-        c.execute('INSERT INTO usuarios (nombre) VALUES (?)', (nombre,))
-        conn.commit()
+def conectar():
+    try:
+        return psycopg2.connect(
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            host=DB_HOST,
+            port=DB_PORT,
+            options=''  # Evita negociación de codificación
+        )
+    except Exception as e:
+        print(f"Error al conectar a la base de datos: {e}")
+        raise
 
 def obtener_usuarios():
-    with sqlite3.connect(DB_NAME) as conn:
-        c = conn.cursor()
-        c.execute('SELECT id, nombre FROM usuarios')
-        usuarios = c.fetchall()
-    return usuarios
+    try:
+        with conectar() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT id, nombre FROM usuarios ORDER BY id")
+                return cur.fetchall()
+    except Exception as e:
+        print(f"Error al obtener usuarios: {e}")
+        return []
 
-def editar_usuario(id_usuario, nuevo_nombre):
-    with sqlite3.connect(DB_NAME) as conn:
-        c = conn.cursor()
-        c.execute("UPDATE usuarios SET nombre = ? WHERE id = ?", (nuevo_nombre, id_usuario))
-        conn.commit()
+def agregar_usuario(nombre):
+    try:
+        with conectar() as conn:
+            with conn.cursor() as cur:
+                cur.execute("INSERT INTO usuarios (nombre) VALUES (%s)", (nombre,))
+                conn.commit()
+    except Exception as e:
+        print(f"Error al agregar usuario: {e}")
 
 def eliminar_usuario(id_usuario):
-    with sqlite3.connect(DB_NAME) as conn:
-        c = conn.cursor()
-        c.execute("DELETE FROM usuarios WHERE id = ?", (id_usuario,))
-        conn.commit()
+    try:
+        with conectar() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM usuarios WHERE id = %s", (id_usuario,))
+                conn.commit()
+    except Exception as e:
+        print(f"Error al eliminar usuario: {e}")
+
+def editar_usuario(id_usuario, nuevo_nombre):
+    try:
+        with conectar() as conn:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE usuarios SET nombre = %s WHERE id = %s", (nuevo_nombre, id_usuario))
+                conn.commit()
+    except Exception as e:
+        print(f"Error al editar usuario: {e}")
 
 def agregar_movimiento(tipo, descripcion, monto, fecha, id_usuario, participantes):
-    with sqlite3.connect(DB_NAME) as conn:
-        c = conn.cursor()
-        participantes_json = json.dumps(participantes)
-        c.execute(''' 
-            INSERT INTO movimientos (tipo, descripcion, monto, fecha, id_usuario, participantes)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (tipo, descripcion, monto, fecha, id_usuario, participantes_json))
-        conn.commit()
+    try:
+        with conectar() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO movimientos (tipo, descripcion, monto, fecha, id_usuario, participantes)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (tipo, descripcion, monto, fecha, id_usuario, participantes))
+                conn.commit()
+    except Exception as e:
+        print(f"Error al agregar movimiento: {e}")
 
 def obtener_movimientos():
-    with sqlite3.connect(DB_NAME) as conn:
-        c = conn.cursor()
-        c.execute('SELECT * FROM movimientos ORDER BY fecha DESC')
-        movimientos = c.fetchall()
-    return movimientos
-
-
-def editar_descripcion_movimiento(id_movimiento, nueva_descripcion):
-    with sqlite3.connect(DB_NAME) as conn:
-        c = conn.cursor()
-        c.execute("UPDATE movimientos SET descripcion = ? WHERE id = ?", (nueva_descripcion, id_movimiento))
-        conn.commit()
-
+    try:
+        with conectar() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id, tipo, descripcion, monto, fecha, id_usuario, participantes
+                    FROM movimientos
+                    ORDER BY fecha
+                """)
+                movimientos = cur.fetchall()
+                return [(id, tipo, descripcion, monto, fecha, id_usuario, json.dumps(participantes)) 
+                        for id, tipo, descripcion, monto, fecha, id_usuario, participantes in movimientos]
+    except Exception as e:
+        print(f"Error al obtener movimientos: {e}")
+        return []
 
 def eliminar_movimiento(id_movimiento):
-    with sqlite3.connect(DB_NAME) as conn:
-        c = conn.cursor()
-        c.execute('DELETE FROM movimientos WHERE id = ?', (id_movimiento,))
-        conn.commit()
+    try:
+        with conectar() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM movimientos WHERE id = %s", (id_movimiento,))
+                conn.commit()
+    except Exception as e:
+        print(f"Error al eliminar movimiento: {e}")
+
+def editar_descripcion_movimiento(id_movimiento, nueva_descripcion):
+    try:
+        with conectar() as conn:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE movimientos SET descripcion = %s WHERE id = %s", (nueva_descripcion, id_movimiento))
+                conn.commit()
+    except Exception as e:
+        print(f"Error al editar descripción del movimiento: {e}")

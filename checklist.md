@@ -1,4 +1,3 @@
-
 # ✅ Checklist: Actualizar la App de Gastos en Render
 
 ### 🧑‍💻 1. Hacer cambios en el código
@@ -25,6 +24,7 @@ streamlit run app.py
 
 ```bash
 docker compose up --build
+(si es necesario primero destruir usar: docker compose down -v)
 ```
 
 ---

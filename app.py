@@ -1,11 +1,9 @@
 import streamlit as st
 import pandas as pd
-from database import init_db, agregar_usuario, obtener_usuarios, agregar_movimiento, obtener_movimientos, eliminar_movimiento, editar_descripcion_movimiento, eliminar_usuario, editar_usuario
+from database import agregar_usuario, obtener_usuarios, agregar_movimiento, obtener_movimientos, eliminar_movimiento, editar_descripcion_movimiento, eliminar_usuario, editar_usuario
 from datetime import date
 import json
 
-# Inicializar base de datos
-init_db()
 
 st.title("💸 Gestión 239")
 
