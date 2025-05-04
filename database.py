@@ -19,7 +19,7 @@ def conectar():
             password=DB_PASSWORD,
             host=DB_HOST,
             port=DB_PORT,
-            options=''  # Evita negociación de codificación
+            sslmode="require"
         )
     except Exception as e:
         print(f"Error al conectar a la base de datos: {e}")
