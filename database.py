@@ -107,3 +107,21 @@ def editar_descripcion_movimiento(id_movimiento, nueva_descripcion):
                 conn.commit()
     except Exception as e:
         print(f"Error al editar descripción del movimiento: {e}")
+
+def editar_monto_movimiento(id_movimiento, nuevo_monto):
+    try:
+        with conectar() as conn:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE movimientos SET monto = %s WHERE id = %s", (nuevo_monto, id_movimiento))
+                conn.commit()
+    except Exception as e:
+        print(f"Error al editar monto del movimiento: {e}")
+
+def editar_fecha_movimiento(id_movimiento, nueva_fecha):
+    try:
+        with conectar() as conn:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE movimientos SET fecha = %s WHERE id = %s", (nueva_fecha, id_movimiento))
+                conn.commit()
+    except Exception as e:
+        print(f"Error al editar fecha del movimiento: {e}")

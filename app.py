@@ -1,14 +1,31 @@
 import streamlit as st
 import pandas as pd
-from database import agregar_usuario, obtener_usuarios, agregar_movimiento, obtener_movimientos, eliminar_movimiento, editar_descripcion_movimiento, eliminar_usuario, editar_usuario
 from datetime import date
 import json
 
+from database import (
+    agregar_usuario,
+    obtener_usuarios,
+    agregar_movimiento,
+    obtener_movimientos,
+    eliminar_movimiento,
+    editar_descripcion_movimiento,
+    editar_monto_movimiento,
+    editar_fecha_movimiento,
+    eliminar_usuario,
+    editar_usuario
+)
 
+st.set_page_config(page_title="Gestión 239", page_icon="💸", layout="centered")
 st.title("💸 Gestión 239")
 
 # Tabs principales
-tab1, tab2, tab3, tab4 = st.tabs(["Registrar movimiento", "Ver movimientos", "Gestionar usuarios", "Resumen mensual"])
+tab1, tab2, tab3, tab4 = st.tabs([
+    "Registrar movimiento",
+    "Ver movimientos",
+    "Gestionar usuarios",
+    "Resumen mensual"
+])
 
 # --- TAB 1: Registrar movimiento ---
 with tab1:
@@ -17,7 +34,7 @@ with tab1:
     tipo = st.selectbox("Tipo", ["gasto", "ingreso"])
     descripcion = st.text_input("Descripción")
     monto = st.number_input("Monto", min_value=0.0, format="%.2f")
-    fecha = st.date_input("Fecha", value=date.today())
+    fecha = st.date_input("Fecha", value=date.today(), key="fecha_registro")
 
     usuarios = obtener_usuarios()
     if usuarios:
@@ -44,22 +61,50 @@ with tab2:
 
     movimientos = obtener_movimientos()
     if movimientos:
-        df = pd.DataFrame(movimientos, columns=["ID", "Tipo", "Descripción", "Monto", "Fecha", "ID Usuario", "Participantes"])
-        df["Participantes"] = df["Participantes"].apply(lambda x: ", ".join(map(str, json.loads(x))) if x else "")
-        st.dataframe(df)
+        df = pd.DataFrame(movimientos, columns=[
+            "ID", "Tipo", "Descripción", "Monto", "Fecha", "ID Usuario", "Participantes"])
+        df["Fecha"] = pd.to_datetime(df["Fecha"])
+        df["Mes"] = df["Fecha"].dt.to_period("M").astype(str)
+        df["Participantes"] = df["Participantes"].apply(
+            lambda x: ", ".join(map(str, json.loads(x))) if x else "")
+        usuarios_dict = dict(obtener_usuarios())
+        df["Nombre Usuario"] = df["ID Usuario"].map(usuarios_dict)
+        df = df.drop(columns=["ID Usuario"])
 
-        id_borrar = st.number_input("ID de movimiento a eliminar", min_value=1, step=1)
+        # Filtro por mes
+        meses_disponibles = df["Mes"].sort_values().unique().tolist()
+        mes_filtrado = st.selectbox("Filtrar por mes", ["Todos"] + meses_disponibles, key="mes_filtrado")
+        if mes_filtrado != "Todos":
+            df = df[df["Mes"] == mes_filtrado]
+
+        st.dataframe(df.drop(columns=["Mes", "Participantes"]))
+
+        st.subheader("Eliminar movimiento")
+        id_borrar = st.number_input("ID de movimiento a eliminar", min_value=1, step=1, key="id_eliminar")
         if st.button("Eliminar movimiento"):
             eliminar_movimiento(id_borrar)
             st.success("✅ Movimiento eliminado")
 
-        st.subheader("Editar descripción de un movimiento")
-        id_editar = st.number_input("ID de movimiento a editar", min_value=1, step=1)
-        nueva_descripcion = st.text_input("Nueva descripción")
-
+        st.subheader("Editar descripción")
+        id_desc = st.number_input("ID de movimiento a editar", min_value=1, step=1, key="id_editar_desc")
+        nueva_desc = st.text_input("Nueva descripción")
         if st.button("Actualizar descripción"):
-            editar_descripcion_movimiento(id_editar, nueva_descripcion)
+            editar_descripcion_movimiento(id_desc, nueva_desc)
             st.success("✅ Descripción actualizada")
+
+        st.subheader("Editar monto")
+        id_monto = st.number_input("ID de monto a editar", min_value=1, step=1, key="id_editar_monto")
+        nuevo_monto = st.number_input("Nuevo monto", key="nuevo_monto")
+        if st.button("Actualizar monto"):
+            editar_monto_movimiento(id_monto, nuevo_monto)
+            st.success("✅ Monto actualizado")
+
+        st.subheader("Editar fecha")
+        id_fecha = st.number_input("ID de fecha a editar", min_value=1, step=1, key="id_editar_fecha")
+        nueva_fecha = st.date_input("Nueva fecha", value=date.today(), key="nueva_fecha")
+        if st.button("Actualizar fecha"):
+            editar_fecha_movimiento(id_fecha, nueva_fecha.isoformat())
+            st.success("✅ Fecha actualizada")
 
     else:
         st.info("Todavía no hay movimientos registrados.")
@@ -67,18 +112,15 @@ with tab2:
 # --- TAB 3: Gestionar usuarios ---
 with tab3:
     st.header("Usuarios registrados")
-
     usuarios = obtener_usuarios()
     usuarios_dict = {id: nombre for id, nombre in usuarios}
 
     if usuarios:
-        df_usuarios = pd.DataFrame(usuarios, columns=["ID", "Nombre"])
-        st.dataframe(df_usuarios)
+        st.dataframe(pd.DataFrame(usuarios, columns=["ID", "Nombre"]))
 
         st.subheader("Editar usuario")
         id_seleccionado = st.selectbox("Seleccionar usuario", usuarios_dict.keys(), format_func=lambda x: usuarios_dict[x])
         nuevo_nombre = st.text_input("Nuevo nombre", value=usuarios_dict[id_seleccionado])
-
         if st.button("Guardar cambios"):
             editar_usuario(id_seleccionado, nuevo_nombre)
             st.success("✅ Nombre actualizado correctamente")
@@ -86,7 +128,6 @@ with tab3:
 
         st.subheader("Eliminar usuario")
         id_borrar = st.selectbox("Seleccionar usuario a eliminar", usuarios_dict.keys(), format_func=lambda x: usuarios_dict[x])
-
         if st.button("Eliminar usuario"):
             eliminar_usuario(id_borrar)
             st.success("✅ Usuario eliminado correctamente")
@@ -100,7 +141,6 @@ with tab3:
         agregar_usuario(nuevo_usuario)
         st.success(f"✅ Usuario '{nuevo_usuario}' agregado")
         st.rerun()
-
 
 # --- TAB 4: Resumen mensual ---
 with tab4:
@@ -119,40 +159,30 @@ with tab4:
         df["ID Usuario"] = df["ID Usuario"].astype(int)
         df["Nombre Usuario"] = df["ID Usuario"].map(usuarios)
 
-        # Mostrar filtro por mes
         meses_disponibles = df["Mes"].sort_values().unique().tolist()
         mes_seleccionado = st.selectbox("Seleccioná un mes", meses_disponibles)
-
         df_mes = df[df["Mes"] == mes_seleccionado]
 
-        # Cálculo de ingresos, egresos y saldos por persona
         df_mes["Monto firmado"] = df_mes.apply(
             lambda x: x["Monto"] if x["Tipo"] == "ingreso" else -x["Monto"], axis=1
         )
 
-        # Saldo aportado por cada usuario (sin considerar participantes)
         aporte_por_persona = df_mes.groupby("Nombre Usuario")["Monto firmado"].sum().to_dict()
 
-        # Asegurar que todos los usuarios estén en el diccionario aunque no hayan aportado
         for nombre in usuarios.values():
-            if nombre not in aporte_por_persona:
-                aporte_por_persona[nombre] = 0.0
+            aporte_por_persona.setdefault(nombre, 0.0)
 
-        # Promedio equitativo
         total_mes = sum(aporte_por_persona.values())
         num_personas = len(usuarios)
         promedio = round(total_mes / num_personas, 2)
 
-        # Calcular balance individual
         balances = {persona: round(aporte - promedio, 2) for persona, aporte in aporte_por_persona.items()}
-        ganancia = {persona: promedio for persona,aporte in aporte_por_persona.items()}
 
-        # Mostrar tabla de saldos netos
         resumen = pd.DataFrame.from_dict(balances, orient="index", columns=["Saldo neto"])
-        resumen_ganancia = pd.DataFrame.from_dict(ganancia, orient="index", columns=["Saldo neto"])
+        resumen_ganancia = pd.DataFrame.from_dict({p: promedio for p in usuarios.values()}, orient="index", columns=["Saldo neto"])
+
         st.subheader("💰 Ganancia/pérdida neta por persona")
         st.dataframe(resumen_ganancia.T)
-
 
         # Reparto equitativo
         st.subheader("🤝 Quién le debe a quién")
