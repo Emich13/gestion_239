@@ -167,6 +167,17 @@ with tab4:
             lambda x: x["Monto"] if x["Tipo"] == "ingreso" else -x["Monto"], axis=1
         )
 
+        # Calcular totales
+        total_gastos = df_mes[df_mes["Tipo"] == "gasto"]["Monto"].sum()
+        total_ingresos = df_mes[df_mes["Tipo"] == "ingreso"]["Monto"].sum()
+
+        # Mostrar métricas
+        st.subheader("Totales del mes")
+        col1, col2 = st.columns(2)
+        col1.metric("💰 Total de ingresos", f"${total_ingresos:,.2f}")
+        col2.metric("💸 Total de gastos", f"${total_gastos:,.2f}")
+
+
         aporte_por_persona = df_mes.groupby("Nombre Usuario")["Monto firmado"].sum().to_dict()
 
         for nombre in usuarios.values():
